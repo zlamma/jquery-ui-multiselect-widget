@@ -98,6 +98,7 @@ $.widget("ech.multiselect", {
 			menu.addClass('ui-multiselect-single');
 		}
 		el.change(function () { self._updateSelections(); });
+		el.bind("refresh", function () { self.refresh(false); });
 	},
 	
 	_init: function(){
