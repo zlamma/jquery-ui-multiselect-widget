@@ -560,9 +560,10 @@ $.widget("ech.multiselect", {
 			}
 		});
 
-		var elementToScroll = null;
+		var elementToScroll = [];
 		if (!o.multiple)
 			elementToScroll = menu.find(':selected, :checked').first();
+		
 		
 		var $container = menu.find('ul:last'),
 			effect = o.show,
