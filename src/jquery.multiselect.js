@@ -41,10 +41,15 @@ $.widget("ech.multiselect", {
 		position: {}
 	},
 
+	// unique ID for the option tags and their <label for="">. assigned on create
+	id: undefined,
+
 	_create: function(){
 		var el = this.element.hide(),
 			o = this.options,
 			self = this;
+
+		this.id = multiselectID++;
 		
 		this.speed = $.fx.speeds._default; // default speed for effects
 		this._isOpen = false; // assume no
@@ -97,8 +102,15 @@ $.widget("ech.multiselect", {
 		if( !o.multiple ){
 			menu.addClass('ui-multiselect-single');
 		}
-		el.change(function () { self._updateSelections(); });
-		el.bind("refresh", function () { self.refresh(false); });
+		// Support selecting using the original element
+		el.bind("change", function (e) { self._handleOriginalChange(e); });
+		// The original select and its options can trigger an update using 'refresh' event
+		el.bind("refresh", function (e) {
+			if (e.target === el[0]) { self.refresh(false); }
+		});
+		el.delegate('option', 'refresh', function (e) {
+			if (e.target.parentNode === el[0]) { self._refreshWidgetOption($(e.target).data('ui-multiselect-widget')); }
+		});
 	},
 	
 	_init: function(){
@@ -117,26 +129,22 @@ $.widget("ech.multiselect", {
 	},
 	
 	refresh: function( init ){
-		var el = this.element,
+		var self = this,
+			el = this.element,
 			o = this.options,
 			menu = this.menu,
 			button = this.button,
 			checkboxContainer = this.checkboxContainer,
-			optgroups = [],
-			id = el.attr('id') || multiselectID++; // unique ID for the label & option tags
-		
+			optgroups = [];
+
+		this._optionInputIdSeq = 0;
 		checkboxContainer.empty();
 		
 		// build items
 		this.element.find('option').each(function(i){
-			var $this = $(this), 
-				title = $this.html(),
-				value = this.value, 
-				inputID = this.id || 'ui-multiselect-'+id+'-option-'+i, 
-				$parent = $this.parent(), 
-				isDisabled = $this.is(':disabled'), 
-				labelClasses = ['ui-corner-all'],
-				label, input, li;
+			var $this = $(this),
+				$parent = $this.parent(),
+				widgetOption;
 			
 			// is this an optgroup?
 			if( $parent.is('optgroup') ){
@@ -151,28 +159,12 @@ $.widget("ech.multiselect", {
 					optgroups.push( optLabel );
 				}
 			}
-			
-			if( value.length > 0 ){
-				if( isDisabled ){
-					labelClasses.push('ui-state-disabled');
-				}
-				
-				li = $('<li />')
-					.addClass(isDisabled ? 'ui-multiselect-disabled' : '')
-					.appendTo( checkboxContainer );
-					
-				label = $('<label />')
-					.attr('for', inputID)
-					.addClass(labelClasses.join(' '))
-					.addClass((!o.multiple && this.selected) ? 'ui-state-active' : '')
-					.appendTo(li);
-				
-				// attr's are inlined to support form reset.  double checked attr is to support chrome bug - see #46
-				$('<input type="'+(o.multiple ? 'checkbox' : 'radio')+'" '+(this.selected ? 'checked="checked"' : '')+ ' name="multiselect_'+id + '" />')
-					.attr({ id:inputID, checked:this.selected, title:title, disabled:isDisabled, 'aria-disabled':isDisabled, 'aria-selected':this.selected })
-					.val( value )
-					.appendTo( label )
-					.after('<span>'+title+'</span>');
+			else {
+				widgetOption = $('<li class="ui-multiselect-widgetOption" />')
+					.appendTo(checkboxContainer);
+				widgetOption.data('original-option', $this);
+				$this.data('ui-multiselect-widget', widgetOption);
+				self._refreshWidgetOption(widgetOption);
 			}
 		});
 		
@@ -214,6 +206,43 @@ $.widget("ech.multiselect", {
 		
 		this.buttonlabel.html( value );
 		return value;
+	},
+
+	// unique input Ids are needed for <label for="">. Assigned in refresh()
+	_optionInputIdSeq: undefined,
+
+	_refreshWidgetOption: function (widgetOption) {
+		var o = this.options,
+			originalOption = widgetOption.data('original-option'),
+			isSelected = originalOption.is(':selected'),
+			isDisabled = originalOption.is(':disabled'),
+			label = widgetOption.find('.ui-multiselect-option-label').first(),
+			input = widgetOption.find('.ui-multiselect-option-input').first(),
+			visual = widgetOption.find('.ui-multiselect-option-visual').first();
+
+		if (label.length === 0) {
+			var inputID = originalOption[0].id || 'ui-multiselect-' + this.id + '-option-' + this._optionInputIdSeq++;
+			label = $('<label class="ui-multiselect-option-label ui-corner-all" />')
+				.attr('for', inputID)
+				.appendTo(widgetOption);
+			input = $('<input class="ui-multiselect-option-input" type="' + (o.multiple ? 'checkbox' : 'radio') + '" id="' + inputID + '" name="multiselect_' + this.id + '" />')
+				.appendTo(label);
+			visual = $('<span class="ui-multiselect-option-visual"/>')
+				.appendTo(label);
+		}
+
+		widgetOption
+			.toggleClass('ui-multiselect-disabled', isDisabled)
+			.addClass(originalOption.attr('class'))
+			.attr({ title: originalOption.attr('title'), style: originalOption.attr('style') });
+
+		label.toggleClass('ui-state-active', !o.multiple && isSelected)
+			.toggleClass('ui-state-disabled', isDisabled);
+
+		input.attr({ checked: isSelected, disabled: isDisabled, title: originalOption.text(), 'aria-disabled': isDisabled, 'aria-selected': isSelected })
+			.val(originalOption.val());
+
+		visual.html(originalOption.html());
 	},
 	
 	// binds events
@@ -353,15 +382,14 @@ $.widget("ech.multiselect", {
 				
 				// set the original option tag to selected
 				tags.filter(function(){
-			        return this.value === val && checked !== $(this).is(':selected, :checked');
-			    }).each(function () {
-			        originalChanged = true;
-			        $(this).attr('selected', (checked ? 'selected' : ''));
-			    });
+					return this.value === val && checked !== $(this).is(':selected, :checked');
+				}).each(function () {
+					originalChanged = true;
+					$(this).attr('selected', (checked ? 'selected' : ''));
+				});
 
-				// Fire a change event in the original select element
-				if (originalChanged)
-					$(self.element).trigger('change');
+			if (originalChanged)
+				self._fireChangeInOriginal();
 
 				// setTimeout is to fix multiselect issue #14 and #47. caused by jQuery issue #3827
 				// http://bugs.jquery.com/ticket/3827 
@@ -386,22 +414,33 @@ $.widget("ech.multiselect", {
 		});
 	},
 
-		_updateSelections: function () {
-			var self = this;
-			var tags = self.element.find('option');
-			self.menu.find('input[type="checkbox"], input[type="radio"]').each(function () {
-			var widgetInput = $(this);
-				var checked = widgetInput.is(':selected, :checked');
-				var val = this.value;
-				// TODO save a reference to the original input in widgetInput
-				var origInput = tags.filter(function () {
-					return this.value === val;
-				}).first();
+	_fireChangeInOriginal: function () {
+		// Set relatedTarget on the event to mark that we should specifically ignore it
+		this.element.trigger({
+			type: "change",
+			relatedTarget: this.menu[0]
+		});
+	},
 
-				if (checked !== origInput.is(':selected, :checked'))
-					self._toggleChecked(!checked, widgetInput);
-			});
-		},
+	_handleOriginalChange: function (e) {
+		if (this.menu[0] !== e.relatedTarget)
+			this._updateSelections();
+	},
+
+	_updateSelections: function(){
+		var self = this;
+		var tags = self.element.find('option');
+		self.menu.find('input[type="checkbox"], input[type="radio"]').each(function () {
+			var widgetInput = $(this);
+			var checked = widgetInput.is(':selected, :checked');
+			var val = this.value;
+			var origOption = widgetInput.closest('.ui-multiselect-widgetOption').data('original-option');
+
+			if (checked !== origOption.is(':selected, :checked'))
+				self._toggleChecked(!checked, widgetInput);
+		});
+		this.update();
+	},
 
 	// set button width
 	_setButtonWidth: function(){
@@ -482,9 +521,8 @@ $.widget("ech.multiselect", {
 			$(this).attr({ 'selected': flag, 'aria-selected': flag });
 		});
 
-		// Fire a change event in the original select element
 		if (originalChanged)
-			$(self.element).trigger('change');
+			self._fireChangeInOriginal();
 	},
 
 	_toggleDisabled: function( flag ){
