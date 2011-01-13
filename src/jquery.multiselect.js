@@ -159,13 +159,11 @@ $.widget("ech.multiselect", {
 					optgroups.push( optLabel );
 				}
 			}
-			else {
-				widgetOption = $('<li class="ui-multiselect-widgetOption" />')
-					.appendTo(checkboxContainer);
-				widgetOption.data('original-option', $this);
-				$this.data('ui-multiselect-widget', widgetOption);
-				self._refreshWidgetOption(widgetOption);
-			}
+			widgetOption = $('<li class="ui-multiselect-widgetOption" />')
+				.appendTo(checkboxContainer);
+			widgetOption.data('original-option', $this);
+			$this.data('ui-multiselect-widget', widgetOption);
+			self._refreshWidgetOption(widgetOption);
 		});
 		
 		// cache some moar useful elements
