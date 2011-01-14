@@ -94,7 +94,9 @@ $.widget("ech.multiselect", {
 		
 		// perform event bindings
 		this._bindEvents();
-		
+
+		this._bindEventsOfOriginal();
+
 		// build menu
 		this.refresh( true );
 		
@@ -102,17 +104,8 @@ $.widget("ech.multiselect", {
 		if( !o.multiple ){
 			menu.addClass('ui-multiselect-single');
 		}
-		// Support selecting using the original element
-		el.bind("change", function (e) { self._handleOriginalChange(e); });
-		// The original select and its options can trigger an update using 'refresh' event
-		el.bind("refresh", function (e) {
-			if (e.target === el[0]) { self.refresh(false); }
-		});
-		el.delegate('option', 'refresh', function (e) {
-			if (e.target.parentNode === el[0]) { self._refreshWidgetOption($(e.target).data('ui-multiselect-widget')); }
-		});
 	},
-	
+
 	_init: function(){
 		if( this.options.header === false ){
 			this.header.hide();
@@ -242,8 +235,40 @@ $.widget("ech.multiselect", {
 
 		visual.html(originalOption.html());
 	},
-	
-	// binds events
+
+	// We need to keep these so we can unbind them on destroy.
+	// They are assigned on create because they should be unique per widget, so we can unbind precisely them.
+	// Also thanks to that they can be closures and can set the widget for 'this' in the actual handling code
+	_originalSelectChangeEventHandler: undefined,
+	_originalSelectRefreshEventHandler: undefined,
+	_originalOptionRefreshEventHandler: undefined,
+
+	// Binds to the events of the original select
+	_bindEventsOfOriginal: function () {
+		var self = this
+			el = this.element;
+		// Support selecting using the original element
+		el.bind("change", this._originalSelectChangeEventHandler = function (e) { self._handleOriginalChange(e); });
+		// The original select and its options can trigger an update using 'refresh' event
+		el.bind("refresh", this._originalSelectRefreshEventHandler = function (e) {
+			if (e.target === el[0]) { self.refresh(false); }
+		});
+		// The original options can trigger the rebuild of its <li> using 'refresh'
+		el.delegate('option', 'refresh', this._originalOptionRefreshEventHandler = function (e) {
+			if (e.target.parentNode === el[0]) {
+				self._refreshWidgetOption($(e.target).data('ui-multiselect-widget'));
+			}
+		});
+	},
+
+	// Unbinds from the events of the original select
+	_unbindEventsOfOriginal: function () {
+		this.element.unbind("change", this._originalSelectChangeEventHandler);
+		this.element.unbind("refresh", this._originalSelectRefreshEventHandler);
+		this.element.undelegate('option', 'refresh', this._originalOptionRefreshEventHandler);
+	},
+
+	// binds events of widget's elements
 	_bindEvents: function(){
 		var self = this, button = this.button;
 		
@@ -660,6 +685,8 @@ $.widget("ech.multiselect", {
 	destroy: function(){
 		// remove classes + data
 		$.Widget.prototype.destroy.call( this );
+
+		this._unbindEventsOfOriginal();
 		
 		this.button.remove();
 		this.menu.remove();
