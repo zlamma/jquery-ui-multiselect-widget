@@ -386,8 +386,8 @@ $.widget("ech.multiselect", {
 					$(this).attr('selected', (checked ? 'selected' : ''));
 				});
 
-			if (originalChanged)
-				self._fireChangeInOriginal();
+				if (originalChanged)
+					self._fireChangeInOriginal();
 
 				// setTimeout is to fix multiselect issue #14 and #47. caused by jQuery issue #3827
 				// http://bugs.jquery.com/ticket/3827 
@@ -520,7 +520,7 @@ $.widget("ech.multiselect", {
 		});
 
 		if (originalChanged)
-			self._fireChangeInOriginal();
+			this._fireChangeInOriginal();
 	},
 
 	_toggleDisabled: function( flag ){
