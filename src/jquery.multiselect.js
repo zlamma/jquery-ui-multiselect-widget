@@ -49,7 +49,7 @@ $.widget("ech.multiselect", {
 			o = this.options,
 			self = this;
 
-		this.id = multiselectID++;
+		this.id = el.attr('id') || multiselectID++;
 		
 		this.speed = $.fx.speeds._default; // default speed for effects
 		this._isOpen = false; // assume no
