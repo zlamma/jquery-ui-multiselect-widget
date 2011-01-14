@@ -216,7 +216,7 @@ $.widget("ech.multiselect", {
 			label = $('<label class="ui-multiselect-option-label ui-corner-all" />')
 				.attr('for', inputID)
 				.appendTo(widgetOption);
-			input = $('<input class="ui-multiselect-option-input" type="' + (o.multiple ? 'checkbox' : 'radio') + '" id="' + inputID + '" name="multiselect_' + this.id + '" />')
+			input = $('<input class="ui-multiselect-option-input" type="' + (o.multiple ? 'checkbox' : 'radio') + '" id="' + inputID + '" '+(originalOption[0].selected ? 'checked="checked"' : '')+ ' name="multiselect_' + this.id + '" />')
 				.appendTo(label);
 			visual = $('<span class="ui-multiselect-option-visual"/>')
 				.appendTo(label);
