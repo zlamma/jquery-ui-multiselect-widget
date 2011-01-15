@@ -242,11 +242,21 @@ $.widget("ech.multiselect", {
 	_originalSelectChangeEventHandler: undefined,
 	_originalSelectRefreshEventHandler: undefined,
 	_originalOptionRefreshEventHandler: undefined,
-
+	_formResetEventHandler: undefined,
+	
 	// Binds to the events of the original select
 	_bindEventsOfOriginal: function () {
 		var self = this
 			el = this.element;
+		
+		// deal with form resets.  the problem here is that buttons aren't
+		// restored to their defaultValue prop on form reset, and the reset
+		// handler fires before the form is actually reset.  delaying it a bit
+		// gives the form inputs time to clear.
+		$(this.element[0].form).bind('reset', this._formResetEventHandler = function(){
+			setTimeout(function(){ self.update(); }, 10);
+		});
+			
 		// Support selecting using the original element
 		el.bind("change", this._originalSelectChangeEventHandler = function (e) { self._handleOriginalChange(e); });
 		// The original select and its options can trigger an update using 'refresh' event
@@ -263,6 +273,7 @@ $.widget("ech.multiselect", {
 
 	// Unbinds from the events of the original select
 	_unbindEventsOfOriginal: function () {
+		$(this.element[0].form).unbind('reset', this._formResetEventHandler);
 		this.element.unbind("change", this._originalSelectChangeEventHandler);
 		this.element.unbind("refresh", this._originalSelectRefreshEventHandler);
 		this.element.undelegate('option', 'refresh', this._originalOptionRefreshEventHandler);
@@ -426,14 +437,6 @@ $.widget("ech.multiselect", {
 			if(self._isOpen && !$.contains(self.menu[0], e.target) && !$target.is('button.ui-multiselect')){
 				self.close();
 			}
-		});
-		
-		// deal with form resets.  the problem here is that buttons aren't
-		// restored to their defaultValue prop on form reset, and the reset
-		// handler fires before the form is actually reset.  delaying it a bit
-		// gives the form inputs time to clear.
-		$(this.element[0].form).bind('reset', function(){
-			setTimeout(function(){ self.update(); }, 10);
 		});
 	},
 
