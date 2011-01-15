@@ -253,21 +253,25 @@ $.widget("ech.multiselect", {
 		// restored to their defaultValue prop on form reset, and the reset
 		// handler fires before the form is actually reset.  delaying it a bit
 		// gives the form inputs time to clear.
-		$(this.element[0].form).bind('reset', this._formResetEventHandler = function(){
-			setTimeout(function(){ self.update(); }, 10);
+		$(this.element[0].form).bind('reset', this._formResetEventHandler = function(e){
+			setTimeout(function(){ 
+				self.update(); 
+			}, 10);
 		});
 			
 		// Support selecting using the original element
-		el.bind("change", this._originalSelectChangeEventHandler = function (e) { self._handleOriginalChange(e); });
+		el.bind("change", this._originalSelectChangeEventHandler = function (e) {
+			self._handleOriginalChange(e);
+		});
 		// The original select and its options can trigger an update using 'refresh' event
 		el.bind("refresh", this._originalSelectRefreshEventHandler = function (e) {
-			if (e.target === el[0]) { self.refresh(false); }
+			if (e.target === el[0])
+				self.refresh(false);
 		});
 		// The original options can trigger the rebuild of its <li> using 'refresh'
 		el.delegate('option', 'refresh', this._originalOptionRefreshEventHandler = function (e) {
-			if (e.target.parentNode === el[0]) {
+			if (e.target.parentNode === el[0])
 				self._refreshWidgetOption($(e.target).data('ui-multiselect-widget'));
-			}
 		});
 	},
 
