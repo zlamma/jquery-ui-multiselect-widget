@@ -688,6 +688,10 @@ $.widget("ech.multiselect", {
 
 		this._unbindEventsOfOriginal();
 		
+		this.element.find('option').each(function(){
+			$(this).removeData('ui-multiselect-widget');
+		});
+		
 		this.button.remove();
 		this.menu.remove();
 		this.element.show();
