@@ -167,7 +167,7 @@ $.widget("ech.multiselect", {
 		this._setMenuWidth();
 		
 		// remember default value
-		button[0].defaultValue = this.update();
+		button[0].defaultValue = this._updateButton();
 		
 		// broadcast refresh event; useful for widgets
 		if( !init ){
@@ -175,8 +175,30 @@ $.widget("ech.multiselect", {
 		}
 	},
 	
-	// updates the button text.  call refresh() to rebuild
+	// updates the selections and the button text based on original select. Use refresh() to rebuild when options were added or removed
 	update: function(){
+		this._updateSelectionChanges();
+	},
+	
+	_updateSelectionChanges: function () {
+ 		var self = this;
+		self.menu.find('.ui-multiselect-widgetOption').each(function(){
+			var $this = $(this);
+			if ($this.data('original-option')[0].selected !== $this.find('.ui-multiselect-option-input').is(':checked'))
+				self._refreshWidgetOption($this);
+		});
+		this._updateButton();
+	},
+
+	_updateAllOptions: function () {
+ 		var self = this;
+		self.menu.find('.ui-multiselect-widgetOption').each(function(){
+			self._refreshWidgetOption($(this));
+		});
+		this._updateButton();
+	},
+	
+	_updateButton: function(){
 		var o = this.options,
 			$inputs = this.labels.find('input'),
 			$checked = $inputs.filter(':checked'),
@@ -189,7 +211,7 @@ $.widget("ech.multiselect", {
 			if($.isFunction(o.selectedText)){
 				value = o.selectedText.call(this, numChecked, $inputs.length, $checked.get());
 			} else if( /\d/.test(o.selectedList) && o.selectedList > 0 && numChecked <= o.selectedList){
-				value = $checked.map(function(){ return this.title; }).get().join(', ');
+				value = $checked.map(function(){ return $(this).closest('.ui-multiselect-widgetOption').find('.ui-multiselect-option-visual').html(); }).get().join(', ');
 			} else {
 				value = o.selectedText.replace('#', numChecked).replace('#', $inputs.length);
 			}
@@ -205,7 +227,7 @@ $.widget("ech.multiselect", {
 	_refreshWidgetOption: function (widgetOption) {
 		var o = this.options,
 			originalOption = widgetOption.data('original-option'),
-			isSelected = originalOption.is(':selected'),
+			isSelected = originalOption[0].selected,
 			isDisabled = originalOption.is(':disabled'),
 			label = widgetOption.find('.ui-multiselect-option-label').first(),
 			input = widgetOption.find('.ui-multiselect-option-input').first(),
@@ -216,7 +238,7 @@ $.widget("ech.multiselect", {
 			label = $('<label class="ui-multiselect-option-label ui-corner-all" />')
 				.attr('for', inputID)
 				.appendTo(widgetOption);
-			input = $('<input class="ui-multiselect-option-input" type="' + (o.multiple ? 'checkbox' : 'radio') + '" id="' + inputID + '" '+(originalOption[0].selected ? 'checked="checked"' : '')+ ' name="multiselect_' + this.id + '" />')
+			input = $('<input class="ui-multiselect-option-input" type="' + (o.multiple ? 'checkbox' : 'radio') + '" id="' + inputID + '" '+(isSelected ? 'checked="checked"' : '')+ ' name="multiselect_' + this.id + '" />')
 				.appendTo(label);
 			visual = $('<span class="ui-multiselect-option-visual"/>')
 				.appendTo(label);
@@ -227,10 +249,11 @@ $.widget("ech.multiselect", {
 			.addClass(originalOption.attr('class'))
 			.attr({ title: originalOption.attr('title'), style: originalOption.attr('style') });
 
-		label.toggleClass('ui-state-active', !o.multiple && isSelected)
+		label.toggleClass('ui-state-active', isSelected && !o.multiple)
 			.toggleClass('ui-state-disabled', isDisabled);
 
-		input.attr({ checked: isSelected, disabled: isDisabled, title: originalOption.text(), 'aria-disabled': isDisabled, 'aria-selected': isSelected })
+		input[0].checked = isSelected;
+		input.attr({ disabled: isDisabled, 'aria-disabled': isDisabled, 'aria-selected': isSelected })
 			.val(originalOption.val());
 
 		visual.html(originalOption.html());
@@ -254,11 +277,12 @@ $.widget("ech.multiselect", {
 		// handler fires before the form is actually reset.  delaying it a bit
 		// gives the form inputs time to clear.
 		$(this.element[0].form).bind('reset', this._formResetEventHandler = function(e){
-			setTimeout(function(){ 
-				self.update(); 
-			}, 10);
+			setTimeout(
+				function(){
+					self._updateAllOptions();
+				}, 10);
 		});
-			
+
 		// Support selecting using the original element
 		el.bind("change", this._originalSelectChangeEventHandler = function (e) {
 			self._handleOriginalChange(e);
@@ -389,49 +413,36 @@ $.widget("ech.multiselect", {
 			})
 			.delegate('input[type="checkbox"], input[type="radio"]', 'click', function(e){
 				var $this = $(this),
+					thisWidgetOption = $this.closest('.ui-multiselect-widgetOption'),
 					val = this.value,
-					checked = this.checked,
-					tags = self.element.find('option');
+					checked = this.checked;
 				
 				// bail if this input is disabled or the event is cancelled
 				if( $this.is(':disabled') || self._trigger('click', e, { value:val, text:this.title, checked:checked }) === false ){
 					e.preventDefault();
 					return;
 				}
-
-				var originalChanged = false;
-				// make sure the original option tags are unselected first 
-				// in a single select
+				
+				// In a single select, we also need to update the unselected option. We didin't save which it was so we do an update()
+				// which refreshes the widget's option where selection differs
 				if( !self.options.multiple ){
-					tags.filter(function(){
-						return this.value !== val && $(this).is(':selected, :checked');
-					}).each(function () {
-						originalChanged = true;
-						$(this).removeAttr('selected');
-					});
-
-					
-					self.labels.removeClass('ui-state-active');
-					$this.closest('label').toggleClass('ui-state-active', checked );
+					// Unless the user clicked on a selected option. Nothing changes in such case
+					if (thisWidgetOption.data('original-option')[0].selected)
+						return;
+					// Just set the value of the original <select> tag
+					self.element.val($this.val());
+					self._updateAllOptions();
 				}
+				// In a multi select - the only option affected is the one clicked
+				else {
+					thisWidgetOption.data('original-option')[0].selected = checked;
+					self._refreshWidgetOption(thisWidgetOption);
+				}
+				self._fireChangeInOriginal();
 				
-				// toggle aria state
-				$this.attr('aria-selected', checked);
-				
-				// set the original option tag to selected
-				tags.filter(function(){
-					return this.value === val && checked !== $(this).is(':selected, :checked');
-				}).each(function () {
-					originalChanged = true;
-					$(this).attr('selected', (checked ? 'selected' : ''));
-				});
-
-				if (originalChanged)
-					self._fireChangeInOriginal();
-
 				// setTimeout is to fix multiselect issue #14 and #47. caused by jQuery issue #3827
 				// http://bugs.jquery.com/ticket/3827 
-				setTimeout($.proxy(self.update, self), 10);
+				setTimeout($.proxy(self._updateButton, self), 10);
 			});
 		
 		// close each widget when clicking on any other element/anywhere else on the page
@@ -454,22 +465,7 @@ $.widget("ech.multiselect", {
 
 	_handleOriginalChange: function (e) {
 		if (this.menu[0] !== e.relatedTarget)
-			this._updateSelections();
-	},
-
-	_updateSelections: function(){
-		var self = this;
-		var tags = self.element.find('option');
-		self.menu.find('input[type="checkbox"], input[type="radio"]').each(function () {
-			var widgetInput = $(this);
-			var checked = widgetInput.is(':selected, :checked');
-			var val = this.value;
-			var origOption = widgetInput.closest('.ui-multiselect-widgetOption').data('original-option');
-
-			if (checked !== origOption.is(':selected, :checked'))
-				self._toggleChecked(!checked, widgetInput);
-		});
-		this.update();
+			this.update();
 	},
 
 	// set button width
@@ -523,36 +519,30 @@ $.widget("ech.multiselect", {
 	_toggleChecked: function(flag, group){
 		var $inputs = (group && group.length) ?
 			group :
-			this.labels.find('input');
-		
-		// toggle state on inputs
-		$inputs
-			.not(':disabled')
-			.attr({ 'checked':flag, 'aria-selected':flag }); 
-
-			if (!this.options.multiple) {
-				this.labels.removeClass('ui-state-active');
-				$inputs.closest('label').toggleClass('ui-state-active', flag);
-			}
-		
-		this.update();
+			this.labels.find('input'),
+			self = this;
 		
 		var values = $inputs.map(function(){
 			return this.value;
 		}).get();
 		
-		var originalChanged = false;
+		var somethingChanged = false;
 
-		// toggle state on original option tags
-		this.element.find('option').filter(function(){
-			return !this.disabled && $.inArray(this.value, values) > -1 && flag !== $(this).is(':selected, :checked');
+		// toggle state on original option tags and then refresh widget option
+		$inputs.filter(function(){
+			return !this.disabled && flag !== this.checked;
 		}).each(function () {
-			originalChanged = true;
-			$(this).attr({ 'selected': flag, 'aria-selected': flag });
+			somethingChanged = true;
+			var widgetOption = $(this).closest('.ui-multiselect-widgetOption');
+			widgetOption.data('original-option')[0].selected = flag;
+			self._refreshWidgetOption(widgetOption);
 		});
 
-		if (originalChanged)
+		if (somethingChanged){
+			// Refresh button
+			this._updateButton();
 			this._fireChangeInOriginal();
+		}
 	},
 
 	_toggleDisabled: function( flag ){
@@ -592,7 +582,7 @@ $.widget("ech.multiselect", {
 
 		var elementToScroll = [];
 		if (!o.multiple)
-			elementToScroll = menu.find(':selected, :checked').first();
+			elementToScroll = menu.find(':checked').first();
 		
 		
 		var $container = menu.find('ul:last'),
@@ -739,8 +729,8 @@ $.widget("ech.multiselect", {
 			case 'selectedText':
 			case 'selectedList':
 			case 'noneSelectedText':
-				this.options[key] = value; // these all needs to update immediately for the update() call
-				this.update();
+				this.options[key] = value; // these all need to update immediately for the _updateButton() call
+				this._updateButton();
 				break;
 			case 'classes':
 				menu.add(this.button).removeClass(this.options.classes).addClass(value);
