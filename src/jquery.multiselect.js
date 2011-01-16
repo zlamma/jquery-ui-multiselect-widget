@@ -393,10 +393,14 @@ $.widget("ech.multiselect", {
 				}
 			})
 			// In Chrome clicking on the label will put its input out of focus for good, so we should restore it
-			.delegate('label', 'click', function(){
+			.delegate('label', 'click', function(e){
 				var input = $(this).find('input');
 				if (input.is(':enabled')) {
-					input[0].focus();
+					// Keep IE happy on tests - don't call native focus on invisible inputs
+					if (input.is(':visible'))
+						input[0].focus();
+					else
+						input.trigger('focusin').trigger('focus');
 				}
 			})
 			.delegate('input', 'focusin', function(){
