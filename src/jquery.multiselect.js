@@ -184,7 +184,7 @@ $.widget("ech.multiselect", {
 		self.menu.find('.ui-multiselect-widgetOption').each(function(){
 			var $this = $(this);
 			if ($this.data('original-option')[0].selected !== $this.find('.ui-multiselect-option-input').is(':checked'))
-				self._refreshWidgetOption($this);
+				self._refreshWidgetOptionSelection($this);
 		});
 		this._updateButton();
 	},
@@ -193,6 +193,14 @@ $.widget("ech.multiselect", {
  		var self = this;
 		self.menu.find('.ui-multiselect-widgetOption').each(function(){
 			self._refreshWidgetOption($(this));
+		});
+		this._updateButton();
+	},
+	
+	_updateAllOptionsSelections: function () {
+ 		var self = this;
+		self.menu.find('.ui-multiselect-widgetOption').each(function(){
+			self._refreshWidgetOptionSelection($(this));
 		});
 		this._updateButton();
 	},
@@ -226,7 +234,6 @@ $.widget("ech.multiselect", {
 	_refreshWidgetOption: function (widgetOption) {
 		var o = this.options,
 			originalOption = widgetOption.data('original-option'),
-			isSelected = originalOption[0].selected,
 			isDisabled = originalOption.is(':disabled'),
 			label = widgetOption.find('.ui-multiselect-option-label').first(),
 			input = widgetOption.find('.ui-multiselect-option-input').first(),
@@ -236,25 +243,40 @@ $.widget("ech.multiselect", {
 			var inputID = originalOption[0].id || 'ui-multiselect-' + this.id + '-option-' + this._optionInputIdSeq++;
 			label = $('<label class="ui-multiselect-option-label ui-corner-all" for="' + inputID + '" />')
 				.appendTo(widgetOption);
-			input = $('<input class="ui-multiselect-option-input" type="' + (o.multiple ? 'checkbox' : 'radio') + '" id="' + inputID + '" '+(isSelected ? 'checked="checked"' : '')+ ' name="multiselect_' + this.id + '" />')
+			input = $('<input class="ui-multiselect-option-input" type="' + (o.multiple ? 'checkbox' : 'radio') + '" id="' + inputID + '" '+(originalOption[0].selected ? 'checked="checked"' : '')+ ' name="multiselect_' + this.id + '" />')
 				.appendTo(label);
 			visual = $('<span class="ui-multiselect-option-visual"/>')
 				.appendTo(label);
 		}
+		
+		this._refreshWidgetOptionSelection(widgetOption);
 
 		widgetOption
 			.toggleClass('ui-multiselect-disabled', isDisabled)
 			.addClass(originalOption.attr('class'))
 			.attr({ title: originalOption.attr('title'), style: originalOption.attr('style') });
 
-		label.toggleClass('ui-state-active', isSelected && !o.multiple)
-			.toggleClass('ui-state-disabled', isDisabled);
+		label.toggleClass('ui-state-disabled', isDisabled);
 
-		input[0].checked = isSelected;
-		input.attr({ disabled: isDisabled, 'aria-disabled': isDisabled, 'aria-selected': isSelected })
+		input.attr({ disabled: isDisabled, 'aria-disabled': isDisabled })
 			.val(originalOption.val());
 
 		visual.html(originalOption.html());
+	},
+
+	// Refreshes the widget's option selection only
+	// widgetOption - the widget element representing the original option
+	// isSelected *optional* - whether the option should be selected
+	_refreshWidgetOptionSelection: function (widgetOption, isSelected) {
+		if (isSelected === undefined)
+			isSelected = widgetOption.data('original-option')[0].selected;
+			
+		var label = widgetOption.find('.ui-multiselect-option-label').first(),
+		input = widgetOption.find('.ui-multiselect-option-input').first();
+	
+		label.toggleClass('ui-state-active', isSelected && !this.options.multiple);
+		input[0].checked = isSelected;
+		input.attr({ 'aria-selected': isSelected });
 	},
 
 	// We need to keep these so we can unbind them on destroy.
@@ -277,7 +299,7 @@ $.widget("ech.multiselect", {
 		$(this.element[0].form).bind('reset', this._formResetEventHandler = function(e){
 			setTimeout(
 				function(){
-					self._updateAllOptions();
+					self._updateAllOptionsSelections();
 				}, 10);
 		});
 
@@ -456,12 +478,12 @@ $.widget("ech.multiselect", {
 						return;
 					// Just set the value of the original <select> tag
 					self.element.val($this.val());
-					self._updateAllOptions();
+					self._updateAllOptionsSelections();
 				}
 				// In a multi select - the only option affected is the one clicked
 				else {
 					thisWidgetOption.data('original-option')[0].selected = checked;
-					self._refreshWidgetOption(thisWidgetOption);
+					self._refreshWidgetOptionSelection(thisWidgetOption);
 				}
 				self._fireChangeInOriginal();
 				
@@ -560,7 +582,7 @@ $.widget("ech.multiselect", {
 			somethingChanged = true;
 			var widgetOption = $(this).closest('.ui-multiselect-widgetOption');
 			widgetOption.data('original-option')[0].selected = flag;
-			self._refreshWidgetOption(widgetOption);
+			self._refreshWidgetOptionSelection(widgetOption);
 		});
 
 		if (somethingChanged){
