@@ -145,8 +145,7 @@ $.widget("ech.multiselect", {
 				
 				// has this optgroup been added already?
 				if( $.inArray(optLabel, optgroups) === -1 ){
-					$('<li><a href="#">' + optLabel + '</a></li>')
-						.addClass('ui-multiselect-optgroup-label')
+					$('<li class="ui-multiselect-optgroup-label"><a href="#">' + optLabel + '</a></li>')
 						.appendTo( checkboxContainer );
 					
 					optgroups.push( optLabel );
@@ -235,8 +234,7 @@ $.widget("ech.multiselect", {
 
 		if (label.length === 0) {
 			var inputID = originalOption[0].id || 'ui-multiselect-' + this.id + '-option-' + this._optionInputIdSeq++;
-			label = $('<label class="ui-multiselect-option-label ui-corner-all" />')
-				.attr('for', inputID)
+			label = $('<label class="ui-multiselect-option-label ui-corner-all" for="' + inputID + '" />')
 				.appendTo(widgetOption);
 			input = $('<input class="ui-multiselect-option-input" type="' + (o.multiple ? 'checkbox' : 'radio') + '" id="' + inputID + '" '+(isSelected ? 'checked="checked"' : '')+ ' name="multiselect_' + this.id + '" />')
 				.appendTo(label);
@@ -387,10 +385,33 @@ $.widget("ech.multiselect", {
 				e.preventDefault();
 			})
 			.delegate('label', 'mouseenter', function(){
-				if( !$(this).hasClass('ui-state-disabled') ){
-					self.labels.removeClass('ui-state-hover');
-					$(this).addClass('ui-state-hover').find('input').focus();
+				var input = $(this).find('input');
+				// IE will throw an error if we try to focus on a disabled input -- http://api.jquery.com/focus/
+				if (input.is(':enabled')) {
+					// Use native focus so we get all associated events: [focus, focusIn] in newly focused and [blur, focusOut] in the previously focused input
+					input[0].focus();
 				}
+			})
+			// In Chrome clicking on the label will put its input out of focus for good, so we should restore it
+			.delegate('label', 'click', function(){
+				var input = $(this).find('input');
+				if (input.is(':enabled')) {
+					input[0].focus();
+				}
+			})
+			.delegate('input', 'focusin', function(){
+				$(this).closest('.ui-multiselect-widgetOption').find('.ui-multiselect-option-label').addClass('ui-state-hover');
+			});
+		// We need this to prevent a momentary change in appearance when a label is being clicked at and input loses focus
+		// Tried to prevent that momentary focus loss on mousedown but Opera blinks
+		var clickingOnLabelSoKeepVisuallySelected = false;
+		this.menu
+			.delegate('label', 'mousedown', function(e){ clickingOnLabelSoKeepVisuallySelected = true; })
+			.delegate('label', 'mouseup', function(e){ clickingOnLabelSoKeepVisuallySelected = false; })
+			.delegate('input', 'focusout', function(e){
+				var label = $(this).closest('.ui-multiselect-widgetOption').find('.ui-multiselect-option-label');
+				if (!clickingOnLabelSoKeepVisuallySelected)
+					label.removeClass('ui-state-hover');
 			})
 			.delegate('label', 'keydown', function(e){
 				switch(e.which){
@@ -580,9 +601,12 @@ $.widget("ech.multiselect", {
 			}
 		});
 
-		var elementToScroll = [];
+		var elementToFocus;
 		if (!o.multiple)
-			elementToScroll = menu.find(':checked').first();
+			elementToFocus = menu.find(':checked').first();
+		if (o.multiple || elementToFocus.length === 0)
+			// select the first option
+			elementToFocus = this.labels.eq(0).find(':enabled.ui-multiselect-option-input').first();
 		
 		
 		var $container = menu.find('ul:last'),
@@ -597,7 +621,7 @@ $.widget("ech.multiselect", {
 		
 		// set the scroll of the checkbox container
 		$container.height(o.height);
-		if (elementToScroll.length === 0)
+		if (elementToFocus.length === 0)
 			$container.scrollTop(0);
 		
 		// position and show menu
@@ -618,18 +642,9 @@ $.widget("ech.multiselect", {
 			}).show( effect, speed );
 		}
 
-
-		if (elementToScroll.length > 0) {
-			menu.queue(function () {
-				elementToScroll.focus();
-				$(this).dequeue();
-			});
-		}
-		else {
-			// select the first option
-			// triggering both mouseover and mouseover because 1.4.2+ has a bug where triggering mouseover
-			// will actually trigger mouseenter.  the mouseenter trigger is there for when it's eventually fixed
-			this.labels.eq(0).trigger('mouseover').trigger('mouseenter').find('input').trigger('focus');
+		if (elementToFocus.length > 0) {
+			// Use native focus so we get all associated events: [focus, focusIn] in newly focused and [blur, focusOut] in the previously focused input
+			elementToFocus[0].focus();
 		}
 
 		button.addClass('ui-state-active');
