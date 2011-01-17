@@ -205,10 +205,13 @@ $.widget("ech.multiselect", {
 		this._updateButton();
 	},
 	
-	_updateButton: function(){
+	_updateButton: function(getIsSelected){
+		if (getIsSelected === undefined)
+			getIsSelected = function(){
+				return this.checked; };
 		var o = this.options,
 			$inputs = this.labels.find('input'),
-			$checked = $inputs.filter(':checked'),
+			$checked = $inputs.filter(getIsSelected),
 			numChecked = $checked.length,
 			value;
 		
@@ -294,21 +297,22 @@ $.widget("ech.multiselect", {
 		
 		// deal with form resets.  the problem here is that buttons aren't
 		// restored to their defaultValue prop on form reset, and the reset
-		// handler fires before the form is actually reset.  delaying it a bit
-		// gives the form inputs time to clear.
+		// handler fires before the form is actually reset so we use defaultselected
 		$(this.element[0].form).bind('reset', this._formResetEventHandler = function(e){
-			setTimeout(
-				function(){
-					self._updateAllOptionsSelections();
-				}, 10);
+			self.menu.find('.ui-multiselect-widgetOption').each(function(){
+				var originalOption = $(this).data('original-option')[0];
+				self._refreshWidgetOptionSelection($(this), originalOption.defaultSelected);
+			});
+			self._updateButton(function() {
+				return this.defaultChecked; } );
 		});
 
 		// Support selecting using the original element
-		el.bind("change", this._originalSelectChangeEventHandler = function (e) {
+		el.bind('change', this._originalSelectChangeEventHandler = function (e) {
 			self._handleOriginalChange(e);
 		});
 		// The original select and its options can trigger an update using 'refresh' event
-		el.bind("refresh", this._originalSelectRefreshEventHandler = function (e) {
+		el.bind('refresh', this._originalSelectRefreshEventHandler = function (e) {
 			if (e.target === el[0])
 				self.refresh(false);
 		});
@@ -454,6 +458,7 @@ $.widget("ech.multiselect", {
 						break;
 					case 13: // enter
 						e.preventDefault();
+						// Use native click() to have the input already selected in the handler - this is reported as a jQuery bug: http://bugs.jquery.com/ticket/3827
 						$(this).find('input')[0].click();
 						break;
 				}
@@ -470,7 +475,7 @@ $.widget("ech.multiselect", {
 					return;
 				}
 				
-				// In a single select, we also need to update the unselected option. We didin't save which it was so we do an update()
+				// In a single select, we also need to update the unselected option. We didn't save which it was so we do an _updateAllOptionsSelections()
 				// which refreshes the widget's option where selection differs
 				if( !self.options.multiple ){
 					// Unless the user clicked on a selected option. Nothing changes in such case
@@ -489,7 +494,7 @@ $.widget("ech.multiselect", {
 				
 				// setTimeout is to fix multiselect issue #14 and #47. caused by jQuery issue #3827
 				// http://bugs.jquery.com/ticket/3827 
-				setTimeout($.proxy(self._updateButton, self), 10);
+				setTimeout(/*don't use proxy because we need to say we want defalts for unspecified _updateButton parameters */ function () { self._updateButton(); }, 10);
 			});
 		
 		// close each widget when clicking on any other element/anywhere else on the page
@@ -512,7 +517,7 @@ $.widget("ech.multiselect", {
 
 	_handleOriginalChange: function (e) {
 		if (this.menu[0] !== e.relatedTarget)
-			this.update();
+			this._updateSelectionChanges();
 	},
 
 	// set button width

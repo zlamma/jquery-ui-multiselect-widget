@@ -135,10 +135,14 @@ QUnit.done = function(){
 		form.trigger("reset");
 		
 		setTimeout(function(){
-			equals( menu().find(":checked").length, 2, "two checked checkboxes" );
+			equals( menu().find('input').filter(
+				// Don't use :checked to keep Opera happy. For some reason it doesn't see some properly checked inputs
+				function(){
+					return this.checked;
+				}).length, 2, "two checked checkboxes" );
 			equals( button().text(), "2 of 2 selected", "selected text" );
 			start();
-		}, 10);
+		}, 1000);
 	});
 	
 })(jQuery);
