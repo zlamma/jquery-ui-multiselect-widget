@@ -184,10 +184,13 @@ $.widget("ech.multiselect", {
 	
 	_updateSelectionChanges: function () {
  		var self = this;
-		self.menu.find('.ui-multiselect-widgetOption').each(function(){
+		// Prepare the list first, instead of refreshing selection in  each(), because in single select our radio auto change will forfeit the information on what was originally selected
+		var selectionDifferences = self.menu.find('.ui-multiselect-widgetOption').filter(function(){
 			var $this = $(this);
-			if ($this.data('original-option')[0].selected !== $this.find('.ui-multiselect-option-input').is(':checked'))
-				self._refreshWidgetOptionSelection($this);
+			return $this.data('original-option')[0].selected !== $this.find('.ui-multiselect-option-input').is(':checked');
+		});
+		selectionDifferences.each(function () {
+			self._refreshWidgetOptionSelection($(this));
 		});
 		this._updateButton();
 	},
