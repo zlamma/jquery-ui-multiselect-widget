@@ -309,7 +309,7 @@ $.widget("ech.multiselect", {
 	
 	// Binds to the events of the original select
 	_bindEventsOfOriginal: function () {
-		var self = this
+		var self = this,
 			el = this.element;
 		
 		// deal with form resets.  the problem here is that buttons aren't
@@ -328,7 +328,7 @@ $.widget("ech.multiselect", {
 		el.bind('change', this._originalSelectChangeEventHandler = function (e) {
 			self._handleOriginalChange(e);
 		});
-		// The original select and its options can trigger an update using 'refresh' event
+		// The original select can trigger a rebuild using 'refresh' event
 		el.bind('refresh', this._originalSelectRefreshEventHandler = function (e) {
 			if (e.target === el[0])
 				self.refresh(false);
