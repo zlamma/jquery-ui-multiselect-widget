@@ -569,19 +569,15 @@ $.widget("ech.multiselect", {
 			
 			// select the first li that isn't an optgroup label / disabled
 			$next = $start.parent()[moveToLast ? 'prevAll' : 'nextAll']('li:not(.ui-multiselect-disabled, .ui-multiselect-optgroup-label)')[ moveToLast ? 'last' : 'first']();
-		
+
+		// Use native focus so we get all associated events: [focus, focusIn] in newly focused and [blur, focusOut] in the previously focused input
+
 		// if at the first/last element
 		if( !$next.length ){
-			var $container = this.menu.find('ul:last');
-			
 			// move to the first/last
-			this.menu.find('label')[ moveToLast ? 'last' : 'first' ]().trigger('mouseover');
-			
-			// set scroll position
-			$container.scrollTop( moveToLast ? $container.height() : 0 );
-			
+			this.menu.find('.ui-multiselect-option-input')[ moveToLast ? 'last' : 'first' ]()[0].focus();
 		} else {
-			$next.find('label').trigger('mouseover');
+			$next.find('.ui-multiselect-option-input')[0].focus();
 		}
 	},
 
