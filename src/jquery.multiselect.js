@@ -38,7 +38,10 @@ $.widget("ech.multiselect", {
 		hide: '',
 		autoOpen: false,
 		multiple: true,
-		position: {}
+		position: {},
+		// Use native click() on widget's inputs for best results. If you want jQuery
+		// watch if this got fixed - this is reported as a jQuery bug: http://bugs.jquery.com/ticket/3827
+		dontFixJqueryClick: false
 	},
 
 	// unique ID for the option tags and their <label for="">. assigned on create
@@ -205,25 +208,25 @@ $.widget("ech.multiselect", {
 		this._updateButton();
 	},
 	
-	_updateButton: function(getIsSelected){
-		if (getIsSelected === undefined)
-			getIsSelected = function(){
-				return this.checked; };
+	_updateButton: function(getIsOrigOptionSelected){
+		if (getIsOrigOptionSelected === undefined)
+			getIsOrigOptionSelected = function(){
+				return this.selected; };
 		var o = this.options,
-			$inputs = this.labels.find('input'),
-			$checked = $inputs.filter(getIsSelected),
-			numChecked = $checked.length,
+			$options = this.element.find('option'),
+			$selected = $options.filter(getIsOrigOptionSelected),
+			numSelected = $selected.length,
 			value;
 		
-		if( numChecked === 0 ){
+		if( numSelected === 0 ){
 			value = o.noneSelectedText;
 		} else {
 			if($.isFunction(o.selectedText)){
-				value = o.selectedText.call(this, numChecked, $inputs.length, $checked.get());
-			} else if( /\d/.test(o.selectedList) && o.selectedList > 0 && numChecked <= o.selectedList){
-				value = $checked.map(function(){ return $(this).closest('.ui-multiselect-widgetOption').find('.ui-multiselect-option-visual').html(); }).get().join(', ');
+				value = o.selectedText.call(this, numSelected, $options.length, $selected.map(function(){return $(this).data('ui-multiselect-widget').find('.ui-multiselect-option-input')[0]; }).get());
+			} else if( /\d/.test(o.selectedList) && o.selectedList > 0 && numSelected <= o.selectedList){
+				value = $selected.map(function(){return $(this).data('ui-multiselect-widget').find('.ui-multiselect-option-visual').html(); }).get().join(', ');
 			} else {
-				value = o.selectedText.replace('#', numChecked).replace('#', $inputs.length);
+				value = o.selectedText.replace('#', numSelected).replace('#', $options.length);
 			}
 		}
 		
@@ -267,18 +270,29 @@ $.widget("ech.multiselect", {
 		visual.html(originalOption.html());
 	},
 
-	// Refreshes the widget's option selection only
+	// Refreshes the widget's option selection only (based on the original selection)
 	// widgetOption - the widget element representing the original option
 	// isSelected *optional* - whether the option should be selected
 	_refreshWidgetOptionSelection: function (widgetOption, isSelected) {
 		if (isSelected === undefined)
 			isSelected = widgetOption.data('original-option')[0].selected;
+		widgetOption.find('.ui-multiselect-option-input').first()[0].checked = isSelected;
+		this._refreshWidgetOptionSelectionAppearance(widgetOption, isSelected);
+	},
+	
+	
+	// Refreshes the widget's option selection appearance only (based the specified isSelected flag)
+	// This is for uses in click event trigger where we don't want to update the checkbox checked flag because
+	// it was already updated or will be updated to !checked, so by doing it here we would cause the click
+	// to have no effect
+	// widgetOption - the widget element representing the original option
+	// isSelected - whether the option should be selected
+	_refreshWidgetOptionSelectionAppearance: function (widgetOption, isSelected) {
 			
 		var label = widgetOption.find('.ui-multiselect-option-label').first(),
-		input = widgetOption.find('.ui-multiselect-option-input').first();
+			input = widgetOption.find('.ui-multiselect-option-input').first();
 	
 		label.toggleClass('ui-state-active', isSelected && !this.options.multiple);
-		input[0].checked = isSelected;
 		input.attr({ 'aria-selected': isSelected });
 	},
 
@@ -304,7 +318,7 @@ $.widget("ech.multiselect", {
 				self._refreshWidgetOptionSelection($(this), originalOption.defaultSelected);
 			});
 			self._updateButton(function() {
-				return this.defaultChecked; } );
+				return this.defaultSelected; } );
 		});
 
 		// Support selecting using the original element
@@ -464,11 +478,17 @@ $.widget("ech.multiselect", {
 				}
 			})
 			.delegate('input[type="checkbox"], input[type="radio"]', 'click', function(e){
+
 				var $this = $(this),
 					thisWidgetOption = $this.closest('.ui-multiselect-widgetOption'),
 					val = this.value,
 					checked = this.checked;
-				
+
+				// If event was triggerred by jQuery, it won't have the option selected yet - jQuery issue http://bugs.jquery.com/ticket/3827
+				// The jQuery bug is closed as wontfix, so we can rely on fact that the change related to the click is yet to happen. We can deduce the change ourselves then.
+				if (!self.options.dontFixJqueryClick && (e instanceof jQuery.Event) && !('originalEvent' in e) && !($(this).attr('type') === 'radio' && this.checked))
+					checked = !checked;
+					
 				// bail if this input is disabled or the event is cancelled
 				if( $this.is(':disabled') || self._trigger('click', e, { value:val, text:this.title, checked:checked }) === false ){
 					e.preventDefault();
@@ -488,13 +508,10 @@ $.widget("ech.multiselect", {
 				// In a multi select - the only option affected is the one clicked
 				else {
 					thisWidgetOption.data('original-option')[0].selected = checked;
-					self._refreshWidgetOptionSelection(thisWidgetOption);
+					self._refreshWidgetOptionSelectionAppearance(thisWidgetOption, checked);
+					self._updateButton();
 				}
 				self._fireChangeInOriginal();
-				
-				// setTimeout is to fix multiselect issue #14 and #47. caused by jQuery issue #3827
-				// http://bugs.jquery.com/ticket/3827 
-				setTimeout(/*don't use proxy because we need to say we want defalts for unspecified _updateButton parameters */ function () { self._updateButton(); }, 10);
 			});
 		
 		// close each widget when clicking on any other element/anywhere else on the page
