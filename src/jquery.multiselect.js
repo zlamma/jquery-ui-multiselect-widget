@@ -213,7 +213,7 @@ $.widget("ech.multiselect", {
 			getIsOrigOptionSelected = function(){
 				return this.selected; };
 		var o = this.options,
-			$options = this.element.find('option'),
+			$options = this.element.find('option').filter(function() { return $(this).css('visibility') !== 'hidden' && $(this).css('display') !== 'none' }),
 			$selected = $options.filter(getIsOrigOptionSelected),
 			numSelected = $selected.length,
 			value;
