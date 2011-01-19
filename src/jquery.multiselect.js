@@ -244,9 +244,9 @@ $.widget("ech.multiselect", {
 		var o = this.options,
 			originalOption = widgetOption.data('original-option'),
 			isDisabled = originalOption.is(':disabled'),
-			label = widgetOption.find('.ui-multiselect-option-label').first(),
-			input = widgetOption.find('.ui-multiselect-option-input').first(),
-			visual = widgetOption.find('.ui-multiselect-option-visual').first();
+			label = widgetOption.find('label'),
+			input = widgetOption.find('input'),
+			visual = widgetOption.find('span');
 
 		if (label.length === 0) {
 			var inputID = originalOption[0].id || 'ui-multiselect-' + this.id + '-option-' + this._optionInputIdSeq++;
@@ -279,7 +279,7 @@ $.widget("ech.multiselect", {
 	_refreshWidgetOptionSelection: function (widgetOption, isSelected) {
 		if (isSelected === undefined)
 			isSelected = widgetOption.data('original-option')[0].selected;
-		widgetOption.find('.ui-multiselect-option-input').first()[0].checked = isSelected;
+		widgetOption.find('input')[0].checked = isSelected;
 		this._refreshWidgetOptionSelectionAppearance(widgetOption, isSelected);
 	},
 	
@@ -292,11 +292,11 @@ $.widget("ech.multiselect", {
 	// isSelected - whether the option should be selected
 	_refreshWidgetOptionSelectionAppearance: function (widgetOption, isSelected) {
 			
-		var label = widgetOption.find('.ui-multiselect-option-label').first(),
-			input = widgetOption.find('.ui-multiselect-option-input').first();
+		var label = widgetOption.find('label'),
+			input = widgetOption.find('input');
 	
 		label.toggleClass('ui-state-active', isSelected && !this.options.multiple);
-		input.attr({ 'aria-selected': isSelected });
+		input.attr('aria-selected', isSelected);
 	},
 
 	// We need to keep these so we can unbind them on destroy.
@@ -427,38 +427,10 @@ $.widget("ech.multiselect", {
 				
 				e.preventDefault();
 			})
-			.delegate('label', 'mouseenter', function(){
-				var input = $(this).find('input');
-				// IE will throw an error if we try to focus on a disabled input -- http://api.jquery.com/focus/
-				if (input.is(':enabled')) {
-					// Use native focus so we get all associated events: [focus, focusIn] in newly focused and [blur, focusOut] in the previously focused input
-					input[0].focus();
-				}
-			})
-			// In Chrome clicking on the label will put its input out of focus for good, so we should restore it
-			.delegate('label', 'click', function(e){
-				var input = $(this).find('input');
-				if (input.is(':enabled')) {
-					// Keep IE happy on tests - don't call native focus on invisible inputs
-					if (input.is(':visible'))
-						input[0].focus();
-					else
-						input.trigger('focusin').trigger('focus');
-				}
-			})
-			.delegate('input', 'focusin', function(){
-				$(this).closest('.ui-multiselect-widgetOption').find('.ui-multiselect-option-label').addClass('ui-state-hover');
-			});
-		// We need this to prevent a momentary change in appearance when a label is being clicked at and input loses focus
-		// Tried to prevent that momentary focus loss on mousedown but Opera blinks
-		var clickingOnLabelSoKeepVisuallySelected = false;
-		this.menu
-			.delegate('label', 'mousedown', function(e){ clickingOnLabelSoKeepVisuallySelected = true; })
-			.delegate('label', 'mouseup', function(e){ clickingOnLabelSoKeepVisuallySelected = false; })
-			.delegate('input', 'focusout', function(e){
-				var label = $(this).closest('.ui-multiselect-widgetOption').find('.ui-multiselect-option-label');
-				if (!clickingOnLabelSoKeepVisuallySelected)
-					label.removeClass('ui-state-hover');
+			.delegate('li', 'mouseenter', function(){
+				$this = $(this);
+				if (self._isOptionEnabled($this))
+					self._setFocusedOption($this);
 			})
 			.delegate('label', 'keydown', function(e){
 				switch(e.which){
@@ -526,6 +498,29 @@ $.widget("ech.multiselect", {
 			}
 		});
 	},
+	
+	_focusedOption: null,
+	
+	_isOptionEnabled: function($widgetOption){
+		return $widgetOption.find('input').is(':enabled');
+	},
+	
+	_setFocusedOption: function($widgetOption){
+		$widgetOption.find('label').addClass('ui-state-hover');
+		var input = $widgetOption.find('input').focus();
+
+		this._unsetFocusedOption();
+		
+		this._focusedOption = $widgetOption;
+	},
+	
+	_unsetFocusedOption: function(){
+		if (this._focusedOption === null)
+			return;
+		this._focusedOption.find('label').removeClass('ui-state-hover');
+		this._focusedOption.find('input')[0].blur();
+		this._focusedOption = null;
+	},
 
 	_fireChangeInOriginal: function () {
 		// Set relatedTarget on the event to mark that we should specifically ignore it
@@ -573,16 +568,16 @@ $.widget("ech.multiselect", {
 
 		// Use native focus so we get all associated events: [focus, focusIn] in newly focused and [blur, focusOut] in the previously focused input
 		if( $next.length ){
-			$next.find('input')[0].focus();
+			this._setFocusedOption($next);
 		} else {
 			// move to the first/last
-			$next = start.parent().children()[up ? 'last' : 'first']();
+			$next = start.parent().children(up ? ':last' : ':first');
 			if ($next.is(selector))
-				$next.find('input')[0].focus();
+				this._setFocusedOption($next);
 			else {
 				$next = $next[up ? 'prev' : 'next'](selector);
 				if ($next.length)
-					$next.find('input')[0].focus();
+					this._setFocusedOption($next);
 			}
 		}
 	},
@@ -651,12 +646,12 @@ $.widget("ech.multiselect", {
 			}
 		});
 
-		var elementToFocus;
+		var optionToFocus;
 		if (!o.multiple)
-			elementToFocus = menu.find(':checked').first();
-		if (o.multiple || elementToFocus.length === 0)
+			optionToFocus = this.labels.filter('label.ui-state-active').parent();
+		if (o.multiple || optionToFocus.length === 0)
 			// select the first option
-			elementToFocus = this.labels.eq(0).find(':enabled.ui-multiselect-option-input').first();
+			optionToFocus = this.labels.eq(0).closest('li');
 		
 		
 		var $container = menu.find('ul:last'),
@@ -671,7 +666,7 @@ $.widget("ech.multiselect", {
 		
 		// set the scroll of the checkbox container
 		$container.height(o.height);
-		if (elementToFocus.length === 0)
+		if (optionToFocus.length === 0)
 			$container.scrollTop(0);
 		
 		// position and show menu
@@ -692,10 +687,8 @@ $.widget("ech.multiselect", {
 			}).show( effect, speed );
 		}
 
-		if (elementToFocus.length > 0) {
-			// Use native focus so we get all associated events: [focus, focusIn] in newly focused and [blur, focusOut] in the previously focused input
-			elementToFocus[0].focus();
-		}
+		if (optionToFocus.length > 0)
+			this._setFocusedOption(optionToFocus.closest('li'));
 
 		button.addClass('ui-state-active');
 		this._isOpen = true;
