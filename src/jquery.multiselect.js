@@ -470,7 +470,7 @@ $.widget("ech.multiselect", {
 					case 40: // down
 					case 37: // left
 					case 39: // right
-						self._traverse(e.which, this);
+						self._traverse(/*up*/ e.which === 38 || e.which === 37, $(this).parent());
 						e.preventDefault();
 						break;
 					case 13: // enter
@@ -566,21 +566,24 @@ $.widget("ech.multiselect", {
 	},
 	
 	// move up or down within the menu
-	_traverse: function(which, start){
-		var $start = $(start),
-			moveToLast = which === 38 || which === 37,
-			
-			// select the first li that isn't an optgroup label / disabled
-			$next = $start.parent()[moveToLast ? 'prevAll' : 'nextAll']('li:not(.ui-multiselect-disabled, .ui-multiselect-optgroup-label)')[ moveToLast ? 'last' : 'first']();
+	_traverse: function(up, start){
+		var selector = 'li:not(.ui-multiselect-disabled, .ui-multiselect-optgroup-label):visible';
+		// select the first li that isn't an optgroup label / disabled
+		var $next = start[up ? 'prev' : 'next'](selector);
 
 		// Use native focus so we get all associated events: [focus, focusIn] in newly focused and [blur, focusOut] in the previously focused input
-
-		// if at the first/last element
-		if( !$next.length ){
-			// move to the first/last
-			this.menu.find('.ui-multiselect-option-input')[ moveToLast ? 'last' : 'first' ]()[0].focus();
+		if( $next.length ){
+			$next.find('input')[0].focus();
 		} else {
-			$next.find('.ui-multiselect-option-input')[0].focus();
+			// move to the first/last
+			$next = start.parent().children()[up ? 'last' : 'first']();
+			if ($next.is(selector))
+				$next.find('input')[0].focus();
+			else {
+				$next = $next[up ? 'prev' : 'next'](selector);
+				if ($next.length)
+					$next.find('input')[0].focus();
+			}
 		}
 	},
 
