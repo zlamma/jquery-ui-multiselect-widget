@@ -58,27 +58,19 @@ $.widget("ech.multiselect", {
 		this._isOpen = false; // assume no
 	
 		var 
-			button = (this.button = $('<button type="button"><span class="ui-icon ui-icon-triangle-2-n-s"></span></button>'))
-				.addClass('ui-multiselect ui-widget ui-state-default ui-corner-all')
-				.addClass( o.classes )
-				.attr({ 'title':el.attr('title'), 'aria-haspopup':true })
-				.insertAfter( el ),
+			button = (this.button = $('<button type="button" class="ui-multiselect ui-widget ui-state-default ui-corner-all '+ o.classes +'" aria-haspopup="true" title="' + el.attr('title') + '"><span class="ui-icon ui-icon-triangle-2-n-s"></span></button>')),
 			
-			buttonlabel = (this.buttonlabel = $('<span />'))
-				.html( o.noneSelectedText )
-				.appendTo( button ),
+			buttonlabel = (this.buttonlabel = $('<span/>'))
+				.appendTo( button );
+			
+		button.insertAfter( el );
 				
-			menu = (this.menu = $('<div />'))
-				.addClass('ui-multiselect-menu ui-widget ui-widget-content ui-corner-all')
-				.addClass( o.classes )
-				.insertAfter( button ),
+		var menu = (this.menu = $('<div class="ui-multiselect-menu ui-widget ui-widget-content ui-corner-all '+o.classes+'" />')),
 				
-			header = (this.header = $('<div />'))
-				.addClass('ui-widget-header ui-corner-all ui-multiselect-header ui-helper-clearfix')
+			header = (this.header = $('<div class="ui-widget-header ui-corner-all ui-multiselect-header ui-helper-clearfix" />'))
 				.appendTo( menu ),
 				
-			headerLinkContainer = (this.headerLinkContainer = $('<ul />'))
-				.addClass('ui-helper-reset')
+			headerLinkContainer = (this.headerLinkContainer = $('<ul class="ui-helper-reset" />'))
 				.html(function(){
 					if( o.header === true ){
 						return '<li><a class="ui-multiselect-all" href="#"><span class="ui-icon ui-icon-check"></span><span>' + o.checkAllText + '</span></a></li><li><a class="ui-multiselect-none" href="#"><span class="ui-icon ui-icon-closethick"></span><span>' + o.uncheckAllText + '</span></a></li>';
@@ -102,6 +94,8 @@ $.widget("ech.multiselect", {
 
 		// build menu
 		this.refresh( true );
+		
+		menu.insertAfter( button );
 		
 		// some addl. logic for single selects
 		if( !o.multiple ){
