@@ -73,11 +73,11 @@ $.widget("ech.multiselect", {
 		{
 			var hlc = '<ul class="ui-helper-reset">';
 			if( o.header === true ){
-				hlc = hlc + '<li><a class="ui-multiselect-all" href="#"><span class="ui-icon ui-icon-check"></span><span>' + o.checkAllText + '</span></a></li><li><a class="ui-multiselect-none" href="#"><span class="ui-icon ui-icon-closethick"></span><span>' + o.uncheckAllText + '</span></a></li>';
+				hlc += '<li><a class="ui-multiselect-all" href="#"><span class="ui-icon ui-icon-check"></span><span>' + o.checkAllText + '</span></a></li><li><a class="ui-multiselect-none" href="#"><span class="ui-icon ui-icon-closethick"></span><span>' + o.uncheckAllText + '</span></a></li>';
 			} else if(typeof o.header === "string"){
-				hlc = hlc + '<li>' + o.header + '</li>';
+				hlc += '<li>' + o.header + '</li>';
 			}
-			hlc = hlc + '<li class="ui-multiselect-close"><a href="#" class="ui-multiselect-close"><span class="ui-icon ui-icon-circle-close"></span></a></li></ul>';
+			hlc += '<li class="ui-multiselect-close"><a href="#" class="ui-multiselect-close"><span class="ui-icon ui-icon-circle-close"></span></a></li></ul>';
 			var headerLinkContainer = (this.headerLinkContainer = $(hlc))
 					.appendTo( header );
 		}		
