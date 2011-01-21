@@ -497,17 +497,10 @@ $.widget("ech.multiselect", {
 		$widgetOption.find('label').addClass('ui-state-hover');
 		var input = $widgetOption.find('input').focus();
 
-		this._unsetFocusedOption();
+		if (this._focusedOption !== null)
+			this._focusedOption.find('label').removeClass('ui-state-hover');
 		
 		this._focusedOption = $widgetOption;
-	},
-	
-	_unsetFocusedOption: function(){
-		if (this._focusedOption === null)
-			return;
-		this._focusedOption.find('label').removeClass('ui-state-hover');
-		this._focusedOption.find('input')[0].blur();
-		this._focusedOption = null;
 	},
 
 	_fireChangeInOriginal: function () {
