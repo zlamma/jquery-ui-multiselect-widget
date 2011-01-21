@@ -58,49 +58,43 @@ $.widget("ech.multiselect", {
 		this._isOpen = false; // assume no
 	
 		var 
-			button = (this.button = $('<button type="button" class="ui-multiselect ui-widget ui-state-default ui-corner-all '+ o.classes +'" aria-haspopup="true" title="' + el.attr('title') + '"><span class="ui-icon ui-icon-triangle-2-n-s"></span></button>')),
+			button = (this.button = $('<button type="button" class="ui-multiselect ui-widget ui-state-default ui-corner-all ' + o.classes + '" aria-haspopup="true" title="' + el.attr('title') + '"><span class="ui-icon ui-icon-triangle-2-n-s"></span></button>')),
 			
 			buttonlabel = (this.buttonlabel = $('<span/>'))
 				.appendTo( button );
 			
 		button.insertAfter( el );
 				
-		var menu = (this.menu = $('<div class="ui-multiselect-menu ui-widget ui-widget-content ui-corner-all '+o.classes+'" />')),
+		var menu = (this.menu = $('<div class="ui-multiselect-menu ui-widget ui-widget-content ui-corner-all '+o.classes+ (o.multiple ? '' : ' ui-multiselect-single' ) + '" />')),
 				
 			header = (this.header = $('<div class="ui-widget-header ui-corner-all ui-multiselect-header ui-helper-clearfix" />'))
-				.appendTo( menu ),
-				
-			headerLinkContainer = (this.headerLinkContainer = $('<ul class="ui-helper-reset" />'))
-				.html(function(){
-					if( o.header === true ){
-						return '<li><a class="ui-multiselect-all" href="#"><span class="ui-icon ui-icon-check"></span><span>' + o.checkAllText + '</span></a></li><li><a class="ui-multiselect-none" href="#"><span class="ui-icon ui-icon-closethick"></span><span>' + o.uncheckAllText + '</span></a></li>';
-					} else if(typeof o.header === "string"){
-						return '<li>' + o.header + '</li>';
-					} else {
-						return '';
-					}
-				})
-				.append('<li class="ui-multiselect-close"><a href="#" class="ui-multiselect-close"><span class="ui-icon ui-icon-circle-close"></span></a></li>')
-				.appendTo( header ),
-			
-			checkboxContainer = (this.checkboxContainer = $('<ul />'))
-				.addClass('ui-multiselect-checkboxes ui-helper-reset')
 				.appendTo( menu );
+		
+		{
+			var hlc = '<ul class="ui-helper-reset">';
+			if( o.header === true ){
+				hlc = hlc + '<li><a class="ui-multiselect-all" href="#"><span class="ui-icon ui-icon-check"></span><span>' + o.checkAllText + '</span></a></li><li><a class="ui-multiselect-none" href="#"><span class="ui-icon ui-icon-closethick"></span><span>' + o.uncheckAllText + '</span></a></li>';
+			} else if(typeof o.header === "string"){
+				hlc = hlc + '<li>' + o.header + '</li>';
+			}
+			hlc = hlc + '<li class="ui-multiselect-close"><a href="#" class="ui-multiselect-close"><span class="ui-icon ui-icon-circle-close"></span></a></li></ul>';
+			var headerLinkContainer = (this.headerLinkContainer = $(hlc))
+					.appendTo( header );
+		}		
+		
+			
+		var checkboxContainer = (this.checkboxContainer = $('<ul class="ui-multiselect-checkboxes ui-helper-reset" />'))
+			.appendTo( menu );
+		
+		// build menu
+		this.refresh( true );
 		
 		// perform event bindings
 		this._bindEvents();
 
 		this._bindEventsOfOriginal();
-
-		// build menu
-		this.refresh( true );
 		
 		menu.insertAfter( button );
-		
-		// some addl. logic for single selects
-		if( !o.multiple ){
-			menu.addClass('ui-multiselect-single');
-		}
 	},
 
 	_init: function(){
