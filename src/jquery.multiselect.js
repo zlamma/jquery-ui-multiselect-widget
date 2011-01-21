@@ -618,15 +618,6 @@ $.widget("ech.multiselect", {
 			return;
 		}
 		
-		// close other instances
-		$(':ech-multiselect').not(this.element).each(function(){
-			var $this = $(this);
-			
-			if( $this.multiselect('isOpen') ){
-				$this.multiselect('close');
-			}
-		});
-
 		var optionToFocus;
 		if (!o.multiple)
 			optionToFocus = this.labels.filter('label.ui-state-active').parent();
