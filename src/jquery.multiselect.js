@@ -503,7 +503,7 @@ $.widget("ech.multiselect", {
 			this._optionToFocusOnOpen = this.optionWidgets.filter(':not(.ui-multiselect-disabled):first');
 	},
 	
-	_focusedOption: null,
+	_focusedOption: $([]),
 	
 	_trySetFocusedOption: function($widgetOption){
 		if ($widgetOption.find('input').is(':enabled'))
@@ -516,8 +516,7 @@ $.widget("ech.multiselect", {
 		$widgetOption.find('label').addClass('ui-state-hover');
 		var input = $widgetOption.find('input').focus();
 
-		if (this._focusedOption !== null)
-			this._focusedOption.find('label').removeClass('ui-state-hover');
+		this._focusedOption.find('label').removeClass('ui-state-hover');
 		
 		this._focusedOption = $widgetOption;
 	},
