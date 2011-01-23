@@ -149,8 +149,9 @@ $.widget("ech.multiselect", {
 			self._refreshWidgetOption(widgetOption);
 		});
 		
-		// cache some moar useful elements
+		// cache some more useful elements
 		this.labels = menu.find('label');
+		this.optionWidgets = checkboxContainer.find('li:not(.ui-multiselect-optgroup-label)');
 		
 		// set widths
 		this._setButtonWidth();
@@ -158,6 +159,8 @@ $.widget("ech.multiselect", {
 		
 		// remember default value
 		button[0].defaultValue = this._updateButton();
+
+		this._refreshOptionToFocusOnOpen();
 		
 		// broadcast refresh event; useful for widgets
 		if( !init ){
@@ -323,8 +326,12 @@ $.widget("ech.multiselect", {
 		});
 		// The original options can trigger the rebuild of its <li> using 'refresh'
 		el.delegate('option', 'refresh', this._originalOptionRefreshEventHandler = function (e) {
-			if (e.target.parentNode === el[0])
-				self._refreshWidgetOption($(e.target).data('ui-multiselect-widget'));
+			if (e.target.parentNode === el[0]) {
+				var optionWidget = $(e.target).data('ui-multiselect-widget');
+				self._refreshWidgetOption(optionWidget);
+				if (optionWidget === self._optionToFocusOnOpen)
+					self._refreshOptionToFocusOnOpen();
+			}
 		});
 	},
 
@@ -416,9 +423,7 @@ $.widget("ech.multiselect", {
 				e.preventDefault();
 			})
 			.delegate('li', 'mouseenter', function(){
-				$this = $(this);
-				if (self._isOptionEnabled($this))
-					self._setFocusedOption($this);
+				self._trySetFocusedOption($(this));
 			})
 			.delegate('label', 'keydown', function(e){
 				switch(e.which){
@@ -467,6 +472,7 @@ $.widget("ech.multiselect", {
 					// Just set the value of the original <select> tag
 					self.element.val($this.val());
 					self._updateAllOptionsSelections();
+					self._optionToFocusOnOpen = thisWidgetOption;
 				}
 				// In a multi select - the only option affected is the one clicked
 				else {
@@ -487,13 +493,26 @@ $.widget("ech.multiselect", {
 		});
 	},
 	
+	_optionToFocusOnOpen: undefined,
+	
+	_refreshOptionToFocusOnOpen: function () {
+		if (!this.options.multiple)
+			this._optionToFocusOnOpen = this.labels.filter('label.ui-state-active').parent();
+		if (this.options.multiple || this._optionToFocusOnOpen.length === 0)
+			// select the first option
+			this._optionToFocusOnOpen = this.optionWidgets.filter(':not(.ui-multiselect-disabled):first');
+	},
+	
 	_focusedOption: null,
 	
-	_isOptionEnabled: function($widgetOption){
-		return $widgetOption.find('input').is(':enabled');
+	_trySetFocusedOption: function($widgetOption){
+		if ($widgetOption.find('input').is(':enabled'))
+			this._setFocusedOption($widgetOption);
 	},
 	
 	_setFocusedOption: function($widgetOption){
+		if (this._focusedOption === $widgetOption)
+			return;
 		$widgetOption.find('label').addClass('ui-state-hover');
 		var input = $widgetOption.find('input').focus();
 
@@ -547,7 +566,6 @@ $.widget("ech.multiselect", {
 		// select the first li that isn't an optgroup label / disabled
 		var $next = start[up ? 'prev' : 'next'](selector);
 
-		// Use native focus so we get all associated events: [focus, focusIn] in newly focused and [blur, focusOut] in the previously focused input
 		if( $next.length ){
 			this._setFocusedOption($next);
 		} else {
@@ -618,15 +636,7 @@ $.widget("ech.multiselect", {
 			return;
 		}
 		
-		var optionToFocus;
-		if (!o.multiple)
-			optionToFocus = this.labels.filter('label.ui-state-active').parent();
-		if (o.multiple || optionToFocus.length === 0)
-			// select the first option
-			optionToFocus = this.labels.eq(0).closest('li');
-		
-		
-		var $container = menu.find('ul:last'),
+		var $container = this.checkboxContainer,
 			effect = o.show,
 			pos = button.position();
 		
@@ -638,7 +648,7 @@ $.widget("ech.multiselect", {
 		
 		// set the scroll of the checkbox container
 		$container.height(o.height);
-		if (optionToFocus.length === 0)
+		if (this._optionToFocusOnOpen.length === 0)
 			$container.scrollTop(0);
 		
 		// position and show menu
@@ -659,8 +669,8 @@ $.widget("ech.multiselect", {
 			}).show( effect, speed );
 		}
 
-		if (optionToFocus.length > 0)
-			this._setFocusedOption(optionToFocus.closest('li'));
+		if (this._optionToFocusOnOpen.length > 0)
+			this._setFocusedOption(this._optionToFocusOnOpen);
 
 		button.addClass('ui-state-active');
 		this._isOpen = true;
