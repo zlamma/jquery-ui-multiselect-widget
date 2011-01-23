@@ -672,6 +672,7 @@ $.widget("ech.multiselect", {
 
 		button.addClass('ui-state-active');
 		this._isOpen = true;
+		this._trigger('open');
 	},
 	
 	// close the menu
@@ -688,6 +689,7 @@ $.widget("ech.multiselect", {
 		this.menu.hide(effect, speed);
 		this.button.removeClass('ui-state-active');
 		this._isOpen = false;
+		this._trigger('close');
 	},
 
 	enable: function(){
