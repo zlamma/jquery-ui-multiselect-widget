@@ -514,7 +514,7 @@ $.widget("ech.multiselect", {
 		if (this._focusedOption === $widgetOption)
 			return;
 		$widgetOption.find('label').addClass('ui-state-hover');
-		var input = $widgetOption.find('input').focus();
+		var input = $widgetOption.find('input')[0].focus();
 
 		this._focusedOption.find('label').removeClass('ui-state-hover');
 		
