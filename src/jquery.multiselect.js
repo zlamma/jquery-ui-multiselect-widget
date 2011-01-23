@@ -632,9 +632,8 @@ $.widget("ech.multiselect", {
 			o = this.options;
 	
 		// bail if the multiselectopen event returns false, this widget is disabled, or is already open 
-		if( button.hasClass('ui-state-disabled') || this._isOpen || this._trigger('beforeopen') === false ){
+		if( button.hasClass('ui-state-disabled'))
 			return;
-		}
 		
 		var $container = this.checkboxContainer,
 			effect = o.show,
@@ -674,26 +673,21 @@ $.widget("ech.multiselect", {
 
 		button.addClass('ui-state-active');
 		this._isOpen = true;
-		this._trigger('open');
 	},
 	
 	// close the menu
 	close: function(){
-		if(this._trigger('beforeclose') === false){
-			return;
-		}
-	
 		var o = this.options, effect = o.hide, speed = this.speed;
 		
 		// figure out opening effects/speeds
-		if( $.isArray(o.hide) ){
+		if( $.isArray(effect) ){
 			effect = o.hide[0];
-			speed = o.hide[1] || this.speed;
+			if (o.hide[1])
+				speed = o.hide[1];
 		}
 	
 		this.menu.hide(effect, speed);
 		this.button.removeClass('ui-state-active');
-		this._trigger('close');
 		this._isOpen = false;
 	},
 
