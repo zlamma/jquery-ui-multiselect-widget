@@ -631,7 +631,7 @@ $.widget("ech.multiselect", {
 			o = this.options;
 	
 		// bail if the multiselectopen event returns false, this widget is disabled, or is already open 
-		if( button.hasClass('ui-state-disabled'))
+		if( button.hasClass('ui-state-disabled') || this._isOpen || this._trigger('beforeopen') === false ){
 			return;
 		
 		var $container = this.checkboxContainer,
@@ -677,6 +677,9 @@ $.widget("ech.multiselect", {
 	
 	// close the menu
 	close: function(){
+		if(this._trigger('beforeclose') === false)
+			return;
+
 		var o = this.options, effect = o.hide, speed = this.speed;
 		
 		// figure out opening effects/speeds
